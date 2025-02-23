@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+
+name: used-cars-train-env
+image: mcr.microsoft.com/azureml/openmpi3.1.2-ubuntu18.04
+conda_file: ../../../data-science/environment/conda.yml  # Her har vi skiftet stien til conda.yml
+description: Environment for training used-cars model

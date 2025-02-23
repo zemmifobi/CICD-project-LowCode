@@ -1,0 +1,71 @@
+name: CI/CD for Used Cars Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      # 1) Tjek koden ud
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2) Installer Miniconda
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: "3.8"
+          auto-activate-base: true
+
+      # 3) Opret og aktiver conda-miljø
+      - name: Create and activate conda environment
+        run: |
+          conda env create -f data-science/environment/conda.yml -n used-cars-env
+          echo "conda activate used-cars-env" >> $GITHUB_ENV
+        shell: bash
+
+      # 4) Tjek at environment blev oprettet
+      - name: Check Python and pip
+        run: |
+          python --version
+          pip list
+
+      # 5) Lint koden (eksempel med flake8)
+      - name: Lint code
+        run: |
+          pip install flake8
+          flake8 data-science/src --max-line-length=120
+
+      # 6) Kør evt. tests (eksempel med pytest)
+      - name: Run tests
+        run: |
+          pip install pytest
+          pytest data-science/src
+
+  deploy-to-azureml:
+    needs: [build-and-validate]  # Kun hvis build-and-validate kører igennem
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 1) Log på Azure (kræver et secret “AZURE_CREDENTIALS” i dit repo)
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 2) Installer azure-ai-ml for at kunne bruge 'az ml' CLI
+      - name: Install Azure ML CLI
+        run: |
+          pip install azure-ai-ml
+
+      # 3) Deploy pipeline til Azure ML
+      - name: Deploy pipeline to Azure ML
+        run: |
+          az ml job create --file azureml/train/newpipeline.yml
+
